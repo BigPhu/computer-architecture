@@ -22,8 +22,8 @@ f_48:			.float 48
 f_100:			.float 100
 epsilon:		.float 0.0001
 
-input_dir:		.asciiz "D:\\Code\\MIPS\\Major Assignment\\Tests\\Test_6\\input_matrix.txt"
-output_dir:		.asciiz "D:\\Code\\MIPS\\Major Assignment\\Tests\\Test_6\\output_matrix.txt"
+input_dir:		.asciiz "input_matrix.txt"
+output_dir:		.asciiz "output_matrix.txt"
 msg0:			.asciiz "========= Input =========\n\n"
 msg1:			.asciiz "========= Image =========\n"
 msg2: 			.asciiz "========= Kernel =========\n"
