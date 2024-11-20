@@ -27,8 +27,8 @@ f_100:			.float 100
 epsilon:		.float 0.0001
 
 # Input and output directories
-input_dir:		.asciiz "D:\\Code\\MIPS\\Major Assignment\\Tests\\Test_6\\input_matrix.txt"
-output_dir:		.asciiz "D:\\Code\\MIPS\\Major Assignment\\Tests\\Test_6\\output_matrix.txt"
+input_dir:		.asciiz "input_matrix.txt"
+output_dir:		.asciiz "output_matrix.txt"
 # Error message
 error:			.asciiz "Error: size not match"
 
