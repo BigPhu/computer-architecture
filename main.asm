@@ -1,10 +1,12 @@
 	.data
+# Initialize space for matrices according to their maximum size
 image:			.word 0 : 49
 kernel:			.word 0 : 16
-padded_image:	.word 0 : 225
+padded_image:	.word 0 : 225	# To save the image after padding is added
 out:			.word 0 : 196
 config:			.word 0 : 4
 
+# Configuration variables
 N:				.word 1
 M:				.word 1
 P:				.word 1
@@ -12,29 +14,36 @@ S:				.word 1
 p_N:			.word 1
 O:				.word 1
 
-input_buffer:	.space 1024	# idk how many bytes we will reead from the file so... for safe guard, i guess
-output_buffer:	.space 1024
+input_buffer:	.space 1024	# Maximum reading of 1024 bytes
+output_buffer:	.space 1024	# Maximum writing of 1024 bytes
 
+# Special float variables
 f_0:			.float 0
 f_005:			.float 0.05
+f_neg_005:		.float -0.05
 f_10:			.float 10
 f_48:			.float 48
 f_100:			.float 100
 epsilon:		.float 0.0001
 
-input_dir:		.asciiz "D:\\Code\\MIPS\\Major Assignment\\Tests\\Test_6\\input_matrix.txt"
-output_dir:		.asciiz "D:\\Code\\MIPS\\Major Assignment\\Tests\\Test_6\\output_matrix.txt"
-msg0:			.asciiz "========= Input =========\n\n"
-msg1:			.asciiz "========= Image =========\n"
-msg2: 			.asciiz "========= Kernel =========\n"
-msg3:			.asciiz "========= Added padding =========\n"
-msg4:			.asciiz "========= Result =========\n"
+# Input and output directories
+input_dir:		.asciiz "D:\\Coding Assignments\\MIPS\\Major Assignment\\Tests\\Test 1\\input_matrix.txt"
+output_dir:		.asciiz "D:\\Coding Assignments\\MIPS\\Major Assignment\\Tests\\Test 1\\output_matrix.txt"
+# Error message
 error:			.asciiz "Error: size not match"
+
+# DEBUG ONLY
+input_debug:	.asciiz "========= Input =========\n\n"
+img_debug:		.asciiz "========= Image =========\n"
+ker_debug: 		.asciiz "========= Kernel =========\n"
+pad_debug:		.asciiz "========= Added padding =========\n"
+res_debug:		.asciiz "========= Result =========\n"
 space:			.asciiz " "
 tab:			.asciiz "\t"
 newline:		.asciiz "\n"
 
 	.text
+#################################################################################################
 # Open (for reading) a file
 li $v0, 13 				# System call for open file
 la $a0, input_dir 		# Input file name
@@ -49,41 +58,21 @@ la $a1, input_buffer 	# Address of buffer read
 li $a2,  1024			# Hardcoded buffer length
 syscall 				# Read file
 
+#################################################################################################
 la $s0 input_buffer
-
-li $v0, 4
-la $a0, msg0
-syscall
-
-li $v0, 4
-move $a0, $s0
-syscall
-
-li $v0, 4
-la $a0, newline
-syscall
-
-li $v0, 4
-la $a0, newline
-syscall
-
-# move $a0, $s0
-# # int load_config(addr file_buffer)
-# jal load_config
-# add $s0, $s0, $v0
-
+# Build cònig
 la $a0, config
 move $a1, $s0
 li $a2, 4
 jal build_matrix
 add $s0, $s0, $v0
-
+# Load and calculate variables
 la $a0, config
 jal load_config
 
+# Build image
 la $t0, N 
 lw $t0, 0($t0)
-# Build image
 la $a0, image
 move $a1, $s0 
 mul $a2, $t0, $t0
@@ -91,26 +80,30 @@ mul $a2, $t0, $t0
 jal build_matrix
 add $s0, $s0 , $v0
 
+# Build kernel
 la $t0, M
 lw $t0, 0($t0)
-# Build kernel
 la $a0, kernel
 move $a1, $s0
 mul $a2, $t0, $t0
 # int build_matrix(addr matrix_to_build, addr start_of_string, int num_of_elements)
 jal build_matrix
 
+# Add padding
 # void build_padded_image(addr image, addr output)
 la $a0, image
 la $a1, padded_image
 jal build_padded_image
 
+#################################################################################################
+# Convolve
 # void convolve(addr padded_image, addr kernel, addr output)
 la $a0, padded_image
 la $a1, kernel
 la $a2, out
 jal convolve
 
+#################################################################################################
 # Open (for writing) a file that does not exist 
 li $v0, 13				# System call for open file
 la $a0, output_dir		# Output file name
@@ -130,37 +123,40 @@ la $a1, output_buffer	# Address of buffer from which to write
 move $a2, $t9			# Hardcoded buffer length
 syscall
 
-#################################################################################################
 # Close the file
 li $v0, 16				# System call for close file
 move $a0, $s6			# File descriptor to close
 syscall					# Close file
 
 #################################################################################################
-# DEBUG ONLY
 
+# DEBUG ONLY
+# Print image
 la $a0, image
 la $a1, N 
 lw $a1, 0($a1)
-la $a2, msg1
+la $a2, img_debug
 jal print
 
+# Print kernel
 la $a0, kernel
 la $a1, M
 lw $a1, 0($a1)
-la $a2, msg2
+la $a2, ker_debug
 jal print
 
+# Print padded image
 la $a0, padded_image
 la $a1, p_N 
 lw $a1, 0($a1)
-la $a2, msg3
+la $a2, pad_debug
 jal print
 
+# Print output
 la $a0, out
 la $a1, O 
 lw $a1, 0($a1)
-la $a2, msg4
+la $a2, res_debug
 jal print
 
 end_program:
@@ -168,44 +164,47 @@ end_program:
 	syscall
 
 #################################################################################################
+##																							   ##
+##						======	UTILITY FUNCTIONS ======									   ##
+##																							   ##
 #################################################################################################
 
+#################################################################################################
+# LOAD_CONFIG function
 load_config:
 	# $a0: config matrix's address
     # $v0: returns number of characters read
 	#la $t4, config
+
+	# Load N from config
 	la $t0, N 
 	lwc1 $f0, 0($a0)
 	cvt.w.s $f0, $f0 
 	mfc1 $t9, $f0  
-	#addi $t9, $t9, -48
 	sw $t9 0($t0)
 	lw $t0, 0($t0)
 
+	# Load M from config
 	la $t1, M
-	#lbu $t9, 4($t4)
 	lwc1 $f0, 4($a0)
 	cvt.w.s $f0, $f0 
 	mfc1 $t9, $f0  
-	#addi $t9, $t9, -48
 	sw $t9 0($t1)
 	lw $t1, 0($t1)
 
+	# Load P from config
 	la $t2, P 
-	#lbu $t9, 4($a0)
 	lwc1 $f0, 8($a0)
 	cvt.w.s $f0, $f0 
 	mfc1 $t9, $f0  
-	#addi $t9, $t9, -48
 	sw $t9 0($t2)
 	lw $t2, 0($t2)
 
+	# Load S from config
 	la $t3, S 
-	#lbu $t9, 6($a0)
 	lwc1 $f0, 12($a0)
 	cvt.w.s $f0, $f0 
 	mfc1 $t9, $f0  
-	#addi $t9, $t9, -48
 	sw $t9 0($t3)
 	lw $t3, 0($t3)
 
@@ -248,8 +247,7 @@ end_load_config:
 	jr $ra
 
 #################################################################################################
-#################################################################################################
-
+# BUILD_IMAGE function
 build_matrix:
     # $a0: storage's address
     # $a1: pointer to index of a string that reading should start from
@@ -292,7 +290,6 @@ build_matrix:
 			j build_matrix_loop
 
 end_build_matrix:
-	addi $v0, $v0, 1
 	jr $ra
 
 string_to_float:
@@ -376,9 +373,8 @@ return_string_to_float:
         neg.s $f0, $f0
         jr $ra
 
-#################################################################################################
 #################################################################################################	
-# Build Padded image
+# BUILD_PADDED_IMAGE function
 build_padded_image:		
 	la $t0, N		# Load N
 	lw $t0, 0($t0)
@@ -418,9 +414,9 @@ build_padded_image:
 	end_outer_loop:	
 end_build_padded_image:
 	jr $ra
-#################################################################################################
+
 #################################################################################################	
-# MOST IMPORTANT PART
+# CONVOLVE function
 convolve:
 	la $t0, N 
 	lw $t0, 0($t0)
@@ -440,29 +436,24 @@ convolve:
 	la $t5, O
 	lw $t5, 0($t5) 
 
-	# l.s $f4, f_0
-	# l.s $f5, f_005
-
 	li $t6, 0	# loop_1 counter
 	loop_1:
 		beq $t6, $t5, end_loop_1
-		# YOUR CODE HERE
 
 		li $t7, 0	# loop_2 counter
 		loop_2:
 			beq $t7, $t5, end_loop_2
-			# YOUR CODE HERE
+
 			l.s $f0, f_0
 
 			li $t8, 0	# loop_3 counter
 			loop_3:
 				beq $t8, $t1, end_loop_3
-				# YOUR CODE HERE
 
 				li $t9, 0	# loop_4 counter
 				loop_4:
 					beq $t9, $t1, end_loop_4
-					# YOUR CODE HERE
+
 					mul $s1, $t6, $t3		# Row to go to
 					add $s1, $s1, $t8
 					mul $s1, $s1, $t4		# Needs to multiply by the matrix size to get correct row 
@@ -500,39 +491,27 @@ convolve:
 					addi $t9, $t9, 1
 					j loop_4
 				end_loop_4:
-					# YOUR CODE HERE
 
 				addi $t8, $t8, 1
 				j loop_3
 			end_loop_3:
-				# YOUR CODE HERE
-			# c.lt.s $f0, $f4
-			# bc1f round_up
 
-			# sub.s $f0, $f0, $f5
-			# j store
-
-			# round_up:
-			# 	add.s $f0, $f0, $f5 
-
-			store:
-				swc1 $f0, 0($a2)
-				addi $a2, $a2, 4
+			swc1 $f0, 0($a2)
+			addi $a2, $a2, 4
 
 			addi $t7, $t7, 1
 			j loop_2
 		end_loop_2:
-			# YOUR CODE HERE
 
 		addi $t6, $t6, 1
 		j loop_1
 	end_loop_1:
+
 end_convolve:
 	jr $ra
 
 #################################################################################################
-#################################################################################################
-
+# WRITE_TO_BUFFER function
 write_to_buffer:
 	# Write to the file just opened
 	# la $a0, out
@@ -545,6 +524,7 @@ write_to_buffer:
 	l.s $f3, f_10
 	l.s $f4, f_005
 	l.s $f5, epsilon
+	l.s $f8, f_neg_005
 
 	addi $sp, $sp, -4
 	sw $ra, 0($sp)
@@ -556,13 +536,12 @@ write_to_buffer:
 
 		# Check if the float is negative
 		lwc1 $f1, 0($a0)
-		# Round the float
 		abs.s $f2, $f1
 
-		# Process if float is negative. Store '-' before hand in the buffer
-		c.lt.s $f1, $f2
+		# Process if float is negative and is less than or euals to -0.05. Store '-' before hand in the buffer
+		c.le.s $f1, $f8
 		bc1f positive
-		# Round the float
+
 		li $t1, 45
 		sb $t1, 0($a1)
 
@@ -597,18 +576,24 @@ write_to_buffer:
 	    	trunc.w.s $f0, $f2
 	    	mfc1 $t0, $f0
 
-			#li $t8, 1
 	    	jal int_to_string
-	    	#add $a1, $a1, $v0
 	    	add $t9, $t9, $v0
 
-	    	li $t1, ' '
-	    	sb $t1, 0($a1)
+			subi $t6, $t4, 1
+			bne $t5, $t6, white_space
+			# Leaves no white space at the end
 	    	addi $a1, $a1, 1
-	    	addi $t9, $t9, 1
+			j next_buffer_element
 
-	    	addi $a0, $a0, 4
-	    	addi $t5, $t5, 1
+			white_space:
+	    		li $t1, ' '
+	    		sb $t1, 0($a1)
+	    		addi $a1, $a1, 1
+	    		addi $t9, $t9, 1
+
+			next_buffer_element:
+	    		addi $a0, $a0, 4
+	    		addi $t5, $t5, 1
 	    	j write_to_buffer_loop
 		end_write_to_buffer_loop:
 
@@ -637,25 +622,6 @@ int_to_string:
 
 		bne $t1, 0, int_to_string_loop
 
-	# int_to_string_decimal:
-	# 	div $t1, $t3
-	# 	mfhi $t7		# Remainder
-	# 	mflo $t1		# Quotient
-
-	# 	bge $t7, 5, increment_quotient
-	# 	j done_convert
-	# 	increment_quotient:
-	# 		addi $t1, $t1, 1
-	# 		bge $t1, 10, int_to_string_decimal
-
-	# save_decimal:
-	# 	addi $t1, $t1, 48	# Convert remainder to ASCII
-	# 	subi $a1, $a1, 1
-	# 	sb $t1, 0($a1)
-	# 	addi $v0, $v0, 1
-
-	# Move to start of buffer
-	#move $t1, $a0
 	li $t8, 0
 	move_loop:
 		lb $t3, 0($t2)
@@ -672,11 +638,7 @@ int_to_string:
 #################################################################################################
 #################################################################################################
 
-# UNCOMMENT THE FOLLOWING LINE IF YOU NEED TO PRINT OUT THE MATRICES
-# j end_program
-
-#################################################################################################
-#################################################################################################
+# PRINT function (DEBUG ONLY)
 print:	
 	addi $sp, $sp, -4
 	sw $a0, 0($sp)
